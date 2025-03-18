@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Tracking - Employee</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600&family=Lora:wght@400&display=swap" rel="stylesheet">
+    <style>
+        body {
+            text-align: center;
+            font-family: 'Lora', serif;
+            background-color: #f3eade;
+            margin: 0;
+            padding: 0;
+            color: #54003e;
+        }
+        .header {
+            padding: 30px;
+            background-color: #f3eade;
+        }
+        .logo {
+            width: 350px;
+            margin: 0 auto;
+            display: block;
+            padding: 0px;
+        }
+        h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            color: #54003e;
+            font-size: 2.5em;
+            margin: 20px 0;
+        }
+        .button {
+            padding: 15px 30px;
+            margin: 5px;
+            font-size: 16px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            background-color: #ff722c;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #54003e;
+        }
+        input {
+            padding: 10px;
+            margin: 10px;
+            font-size: 16px;
+            border: 2px solid #54003e;
+            border-radius: 5px;
+            font-family: 'Montserrat', sans-serif;
+        }
+        #status {
+            margin-top: 10px;
+            font-family: 'Montserrat', sans-serif;
+            color: #54003e;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="assets2/Brand_Color.png" alt="Capsule Hotel Logo" class="logo">
+    </div>
+    <h1>Time Tracking</h1>
+    <input type="text" id="employeeName" placeholder="Your Name" required>
+    <br>
+    <button class="button" onclick="clockIn()">Clock In</button>
+    <button class="button" onclick="clockOut()">Clock Out</button>
+    <div id="status"></div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        const apiUrl = '/.netlify/functions/time-entries';
+
+        function clockIn() {
+            const employeeName = document.getElementById("employeeName").value.trim();
+            if (!employeeName) {
+                alert("Please enter your name!");
+                return;
+            }
+            const action = "Clock In";
+            const timestamp = new Date().toISOString();
+            const id = Date.now().toString();
+
+            $.ajax({
+                url: apiUrl,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ employeeName, action, timestamp, id }),
+                success: function(response) {
+                    if (response.message === 'Entry saved successfully') {
+                        document.getElementById("status").innerText = `Clocked in at ${new Date(timestamp).toLocaleString()}`;
+                    } else {
+                        alert("Error saving entry");
+                    }
+                },
+                error: function() {
+                    alert("Error saving entry");
+                }
+            });
+        }
+
+        function clockOut() {
+            const employeeName = document.getElementById("employeeName").value.trim();
+            if (!employeeName) {
+                alert("Please enter your name!");
+                return;
+            }
+            const action = "Clock Out";
+            const timestamp = new Date().toISOString();
+            const id = Date.now().toString();
+
+            $.ajax({
+                url: apiUrl,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ employeeName, action, timestamp, id }),
+                success: function(response) {
+                    if (response.message === 'Entry saved successfully') {
+                        document.getElementById("status").innerText = `Clocked out at ${new Date(timestamp).toLocaleString()}`;
+                    } else {
+                        alert("Error saving entry");
+                    }
+                },
+                error: function() {
+                    alert("Error saving entry");
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Tracking - Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600&family=Lora:wght@400&display=swap" rel="stylesheet">
+    <style>
+        body {
+            text-align: center;
+            font-family: 'Lora', serif;
+            background-color: #f3eade;
+            margin: 0;
+            padding: 0;
+            color: #54003e;
+        }
+        .header {
+            padding: 30px;
+            background-color: #f3eade;
+        }
+        .logo {
+            width: 350px;
+            margin: 0 auto;
+            display: block;
+            padding: 0px;
+        }
+        h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            color: #54003e;
+            font-size: 2.5em;
+            margin: 20px 0;
+        }
+        #filter {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        #filter input {
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #54003e;
+            border-radius: 5px;
+            font-family: 'Montserrat', sans-serif;
+        }
+        #filter button {
+            padding: 10px 20px;
+            font-size: 16px;
+            font-family: 'Montserrat', sans-serif;
+            background-color: #ff722c;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #filter button:hover {
+            background-color: #54003e;
+        }
+        #history {
+            margin: 20px auto;
+            max-width: 600px;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            color: #ff722c;
+            font-size: 1.8em;
+            text-align: center;
+        }
+        .day-section {
+            margin-bottom: 10px;
+        }
+        .day-header {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #54003e;
+            color: #ffffff;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .day-header:hover {
+            background-color: #ff722c;
+        }
+        .day-content {
+            display: none;
+            padding: 10px;
+            background-color: #f3eade;
+            border-radius: 0 0 5px 5px;
+        }
+        .day-content.active {
+            display: block;
+        }
+        .entry-pair {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 5px;
+            background-color: #ffffff;
+            border-radius: 3px;
+        }
+        .entry-pair div {
+            flex: 1;
+            padding: 5px;
+            font-family: 'Montserrat', sans-serif;
+            color: #54003e;
+        }
+        .entry-pair .unpaired {
+            background-color: #ffebee; /* Light red for unpaired entries */
+        }
+        .delete-btn {
+            background-color: #ff0000;
+            color: #ffffff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .delete-btn:hover {
+            background-color: #cc0000;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="assets2/Brand_Color.png" alt="Capsule Hotel Logo" class="logo">
+    </div>
+    <h1>Admin - Review Times</h1>
+    <div id="filter">
+        <input type="text" id="filterName" placeholder="Filter by Name">
+        <input type="date" id="filterDate" placeholder="Filter by Date">
+        <button onclick="filterHistory()">Filter</button>
+        <button onclick="updateHistory()">Show All</button>
+    </div>
+    <div id="history">
+        <h2>History</h2>
+        <div id="historyList"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        const apiUrl = '/time-entries.json';
+
+        function fetchEntries() {
+            return $.getJSON(apiUrl).then(entries => entries || []);
+        }
+
+        function updateHistory(filterName = '', filterDate = '') {
+            fetchEntries().then(entries => {
+                const historyList = document.getElementById("historyList");
+                historyList.innerHTML = '';
+
+                // Group entries by day
+                const groupedEntries = {};
+                entries.forEach(entry => {
+                    const date = new Date(entry.timestamp).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                    if (!groupedEntries[date]) {
+                        groupedEntries[date] = [];
+                    }
+                    groupedEntries[date].push(entry);
+                });
+
+                // Filter by name and/or date if provided
+                let filteredEntries = Object.entries(groupedEntries);
+
+                if (filterName) {
+                    const lowerFilterName = filterName.toLowerCase();
+                    filteredEntries = filteredEntries.map(([date, entries]) => [
+                        date,
+                        entries.filter(entry => entry.employeeName && entry.employeeName.toLowerCase().includes(lowerFilterName))
+                    ]).filter(([date, entries]) => entries.length > 0);
+                }
+
+                if (filterDate) {
+                    const selectedDate = new Date(filterDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                    filteredEntries = filteredEntries.filter(([date]) => date === selectedDate);
+                }
+
+                // Sort days in descending order
+                filteredEntries.sort(([dateA], [dateB]) => new Date(dateB) - new Date(dateB));
+
+                // Create the accordion for each day
+                filteredEntries.forEach(([date, entries]) => {
+                    const daySection = document.createElement("div");
+                    daySection.className = "day-section";
+
+                    const dayHeader = document.createElement("div");
+                    dayHeader.className = "day-header";
+                    dayHeader.innerText = date;
+                    const arrow = document.createElement("span");
+                    arrow.innerText = "▼";
+                    dayHeader.appendChild(arrow);
+
+                    const dayContent = document.createElement("div");
+                    dayContent.className = "day-content";
+
+                    // Sort entries chronologically
+                    entries.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+                    // Pair clock-in and clock-out entries for the same employee on the same day
+                    const pairedEntries = {};
+                    entries.forEach(entry => {
+                        const key = `${entry.employeeName}-${date}`;
+                        if (!pairedEntries[key]) {
+                            pairedEntries[key] = { clockIn: null, clockOut: null };
+                        }
+                        if (entry.action === "Clock In") pairedEntries[key].clockIn = entry;
+                        if (entry.action === "Clock Out") pairedEntries[key].clockOut = entry;
+                    });
+
+                    // Display paired and unpaired entries
+                    for (let key in pairedEntries) {
+                        const pair = pairedEntries[key];
+                        const entryPair = document.createElement("div");
+                        entryPair.className = "entry-pair";
+
+                        if (pair.clockIn && pair.clockOut) {
+                            const clockInDiv = document.createElement("div");
+                            clockInDiv.innerText = `${pair.clockIn.employeeName} - Clock In: ${new Date(pair.clockIn.timestamp).toLocaleTimeString('en-US')}`;
+                            const clockOutDiv = document.createElement("div");
+                            clockOutDiv.innerText = `Clock Out: ${new Date(pair.clockOut.timestamp).toLocaleTimeString('en-US')}`;
+                            entryPair.appendChild(clockInDiv);
+                            entryPair.appendChild(clockOutDiv);
+
+                            const deleteBtn = document.createElement("button");
+                            deleteBtn.className = "delete-btn";
+                            deleteBtn.innerText = "Delete Both";
+                            deleteBtn.onclick = () => deletePair(pair.clockIn.id, pair.clockOut.id);
+                            entryPair.appendChild(deleteBtn);
+                        } else if (pair.clockIn) {
+                            const clockInDiv = document.createElement("div");
+                            clockInDiv.className = "unpaired";
+                            clockInDiv.innerText = `${pair.clockIn.employeeName} - Clock In: ${new Date(pair.clockIn.timestamp).toLocaleTimeString('en-US')}`;
+                            entryPair.appendChild(clockInDiv);
+
+                            const deleteBtn = document.createElement("button");
+                            deleteBtn.className = "delete-btn";
+                            deleteBtn.innerText = "Delete";
+                            deleteBtn.onclick = () => deleteEntry(pair.clockIn.id);
+                            entryPair.appendChild(deleteBtn);
+                        } else if (pair.clockOut) {
+                            const clockOutDiv = document.createElement("div");
+                            clockOutDiv.className = "unpaired";
+                            clockOutDiv.innerText = `${pair.clockOut.employeeName} - Clock Out: ${new Date(pair.clockOut.timestamp).toLocaleTimeString('en-US')}`;
+                            entryPair.appendChild(clockOutDiv);
+
+                            const deleteBtn = document.createElement("button");
+                            deleteBtn.className = "delete-btn";
+                            deleteBtn.innerText = "Delete";
+                            deleteBtn.onclick = () => deleteEntry(pair.clockOut.id);
+                            entryPair.appendChild(deleteBtn);
+                        }
+
+                        dayContent.appendChild(entryPair);
+                    }
+
+                    dayHeader.addEventListener("click", () => {
+                        dayContent.classList.toggle("active");
+                        arrow.innerText = dayContent.classList.contains("active") ? "▲" : "▼";
+                    });
+
+                    daySection.appendChild(dayHeader);
+                    daySection.appendChild(dayContent);
+                    historyList.appendChild(daySection);
+                });
+
+                // If no entries match the filter, show a message
+                if (filteredEntries.length === 0) {
+                    const noResults = document.createElement("p");
+                    noResults.innerText = "No entries found for the selected filters.";
+                    noResults.style.fontFamily = "'Montserrat', sans-serif";
+                    noResults.style.color = "#54003e";
+                    noResults.style.textAlign = "center";
+                    historyList.appendChild(noResults);
+                }
+            }).catch(error => {
+                console.error("Error:", error);
+                alert("Error retrieving entries");
+            });
+        }
+
+        function filterHistory() {
+            const filterName = document.getElementById("filterName").value.trim();
+            const filterDate = document.getElementById("filterDate").value;
+            updateHistory(filterName, filterDate);
+        }
+
+        function deleteEntry(entryId) {
+            fetchEntries().then(entries => {
+                const updatedEntries = entries.filter(entry => entry.id !== entryId);
+                // Note: Manual upload required after deletion
+                alert("Entry deleted locally. Please download and upload the updated file to Netlify.");
+                downloadEntries(updatedEntries);
+            }).catch(error => {
+                console.error("Error:", error);
+                alert("Error deleting entry");
+            });
+        }
+
+        function deletePair(clockInId, clockOutId) {
+            fetchEntries().then(entries => {
+                const updatedEntries = entries.filter(entry => entry.id !== clockInId && entry.id !== clockOutId);
+                // Note: Manual upload required after deletion
+                alert("Entries deleted locally. Please download and upload the updated file to Netlify.");
+                downloadEntries(updatedEntries);
+            }).catch(error => {
+                console.error("Error:", error);
+                alert("Error deleting entry");
+            });
+        }
+
+        function downloadEntries(updatedEntries) {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(updatedEntries, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "time-entries.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        // Poll for updates every 5 seconds
+        setInterval(() => {
+            updateHistory();
+        }, 5000); // 5000 milliseconds = 5 seconds
+
+        // Load history on page load
+        document.addEventListener("DOMContentLoaded", () => updateHistory());
+    </script>
+</body>
+</html>
